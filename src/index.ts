@@ -11,7 +11,7 @@ app.use(cors());
 
 app.get('/', (req, res) => {
     res.sendFile(pathSystem.join(pathSystem.resolve(), 'public', 'index.html'));
-  });
+});
 app.get('/playlists/*', async (req: Request, res: Response) => {
     
     const filePath = pathSystem.join(pathSystem.resolve(), '@playlists', req.params[0]);
@@ -24,8 +24,9 @@ app.get('/playlists/*', async (req: Request, res: Response) => {
         
         const decryptedBuffer = await decryptFileToBuffer(filePath);
 
-        res.setHeader('Content-Type', 'video/MP2T');
-        res.setHeader('Content-Disposition', `inline; filename="${req.params[0]}"`);
+        // res.setHeader('Content-Type', 'video/MP2T');
+        res.setHeader('Content-Type', 'video/mp4');
+        // res.setHeader('Content-Disposition', `inline; filename="${req.params[0]}"`);
 
         res.write(decryptedBuffer);
 
@@ -37,27 +38,28 @@ app.get('/playlists/*', async (req: Request, res: Response) => {
 });
 
 app.get('/hls.m3u8', (req: Request, res: Response) => {
-    const playlistFilePath = pathSystem.join(pathSystem.resolve(),'@hls','hls.m3u8');
+    const playlistFilePath = pathSystem.join(pathSystem.resolve(),'@hls',String(req.query?.file ?? ''),'hls.m3u8');
     if (!fsSystem.existsSync(playlistFilePath)) {
         return res.status(404).send('Playlist not found');
     }
 
     let playlistData = fsSystem.readFileSync(playlistFilePath, 'utf8');
 
-    const modifiedContent = playlistData.replace(/(segment_\d+\.ts)/g, `http://localhost:${port}/hls/$1`);
+    const modifiedContent = playlistData.replace(/(segment_\d+\.ts)/g, `http://localhost:${port}/hls/$1?file=${req.query.file}`);
     return res.send(modifiedContent);
 });
 
 for (const reso of [144, 240, 480, 720, 1080]) {
     app.get(`/hls-${reso}p.m3u8`, (req: Request, res: Response) => {
-        const playlistFilePath = pathSystem.join(pathSystem.resolve(), '@hls', `hls-${reso}p.m3u8`);
+        const folder = req.query.folder ?? ''
+        const playlistFilePath = pathSystem.join(pathSystem.resolve(), '@hls', `${folder}/hls-${reso}p.m3u8`);
         if (!fsSystem.existsSync(playlistFilePath)) {
             return res.status(404).send('Playlist not found');
         }
 
         let playlistData = fsSystem.readFileSync(playlistFilePath, 'utf8');
 
-        const modifiedContent = playlistData.replace(/(segment_\d+\.ts)/g, `http://localhost:${port}/playlists/${reso}p/$1`);
+        const modifiedContent = playlistData.replace(/(segment_\d+\.ts)/g, `http://localhost:${port}/playlists/${folder}/${reso}p/$1`);
         return res.send(modifiedContent);
     });
 }
